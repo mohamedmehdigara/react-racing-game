@@ -1,19 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React from 'react';
 
-const Results = () => {
-  const [results, setResults] = useState([]);
-
-  useEffect(() => {
-    axios.get('/api/results')
-      .then((response) => {
-        setResults(response.data);
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }, []);
-
+const Results = ({ results }) => {
   return (
     <div>
       <h1>Race Results</h1>
@@ -27,3 +14,4 @@ const Results = () => {
 };
 
 export default Results;
+

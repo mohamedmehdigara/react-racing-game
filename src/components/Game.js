@@ -1,75 +1,82 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 const Game = () => {
   const [playerPosition, setPlayerPosition] = useState(0);
-  const [opponentPosition, setOpponentPosition] = useState(0);
-  const [raceStarted, setRaceStarted] = useState(false);
-  const [raceFinished, setRaceFinished] = useState(false);
-  const navigate = useNavigate();
+  const [playerSpeed, setPlayerSpeed] = useState(0);
+  const [isAccelerating, setIsAccelerating] = useState(false);
+  const [isBraking, setIsBraking] = useState(false);
 
   useEffect(() => {
-    const movePlayer = (e) => {
-      if (e.keyCode === 32 && !raceFinished) {
+    const handleKeyDown = (event) => {
+      if (event.code === 'ArrowLeft') {
+        // Steer left
+        setPlayerPosition((prevPosition) => prevPosition - 10);
+      } else if (event.code === 'ArrowRight') {
+        // Steer right
         setPlayerPosition((prevPosition) => prevPosition + 10);
+      } else if (event.code === 'ArrowUp') {
+        // Start accelerating
+        setIsAccelerating(true);
+      } else if (event.code === 'ArrowDown') {
+        // Start braking
+        setIsBraking(true);
       }
     };
 
-    window.addEventListener('keydown', movePlayer);
+    const handleKeyUp = (event) => {
+      if (event.code === 'ArrowUp') {
+        // Stop accelerating
+        setIsAccelerating(false);
+      } else if (event.code === 'ArrowDown') {
+        // Stop braking
+        setIsBraking(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
     return () => {
-      window.removeEventListener('keydown', movePlayer);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [raceFinished]);
+  }, []);
 
   useEffect(() => {
-    if (raceStarted && !raceFinished) {
-      const moveOpponent = setInterval(() => {
-        setOpponentPosition((prevPosition) => prevPosition + 5);
-      }, 100);
+    const accelerationRate = 0.5; // Adjust the acceleration rate as needed
+    const brakeRate = 1.5; // Adjust the brake rate as needed
 
-      return () => {
-        clearInterval(moveOpponent);
-      };
-    }
-  }, [raceStarted, raceFinished]);
+    const updatePlayerMovement = setInterval(() => {
+      // Update player's speed
+      if (isAccelerating && playerSpeed < 10) {
+        setPlayerSpeed((prevSpeed) => prevSpeed + accelerationRate);
+      } else if (isBraking && playerSpeed > 0) {
+        setPlayerSpeed((prevSpeed) => prevSpeed - brakeRate);
+      }
 
-  useEffect(() => {
-    if (playerPosition >= 1000) {
-      setRaceFinished(true);
-      axios.post('/api/results', { result: 'Player Wins' }).catch((error) => {
-        console.log(error);
-      });
-    } else if (opponentPosition >= 1000) {
-      setRaceFinished(true);
-      axios.post('/api/results', { result: 'Opponent Wins' }).catch((error) => {
-        console.log(error);
-      });
-    }
-  }, [playerPosition, opponentPosition]);
+      // Update player's position based on speed
+      setPlayerPosition((prevPosition) => prevPosition + playerSpeed);
 
-  const startRace = () => {
-    setRaceStarted(true);
-  };
+      // Limit player's position within the track boundaries
+      // Add appropriate logic to prevent the player from going off the track
 
-  const goToResults = () => {
-    navigate.push('/results');
-  };
+      // ...
+
+    }, 16); // Adjust the interval as needed (60 FPS is approximately 16ms)
+
+    return () => {
+      clearInterval(updatePlayerMovement);
+    };
+  }, [isAccelerating, isBraking, playerSpeed]);
 
   return (
     <div>
       <h1>Racing Game</h1>
-      <div className="race-track">
+      <div className="racing-track">
+        {/* Render the player element */}
         <div className="player" style={{ left: `${playerPosition}px` }} />
-        <div className="opponent" style={{ left: `${opponentPosition}px` }} />
       </div>
-      {!raceStarted && !raceFinished && (
-        <button onClick={startRace}>Start Race</button>
-      )}
-      {raceFinished && (
-        <button onClick={goToResults}>View Results</button>
-      )}
+      {/* Other game components and UI elements */}
     </div>
   );
 };
