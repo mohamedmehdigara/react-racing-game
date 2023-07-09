@@ -1,82 +1,107 @@
 import React, { useState, useEffect } from 'react';
+import RacingTrack from '../scenes/RacingTrack';
 
 const Game = () => {
   const [playerPosition, setPlayerPosition] = useState(0);
-  const [playerSpeed, setPlayerSpeed] = useState(0);
-  const [isAccelerating, setIsAccelerating] = useState(false);
-  const [isBraking, setIsBraking] = useState(false);
+  const [opponentPositions, setOpponentPositions] = useState([]);
+  const [gameOver, setGameOver] = useState(false);
+
+  const trackWidth = 400; // Width of the racing track
+  const playerSpeed = 5; // Speed of the player
+  const opponentSpeed = 4; // Speed of the opponents
+
+  // Function to handle keyboard events
+  const handleKeyDown = (event) => {
+    if (event.code === 'ArrowLeft') {
+      // Move player to the left
+      movePlayer(-playerSpeed);
+    } else if (event.code === 'ArrowRight') {
+      // Move player to the right
+      movePlayer(playerSpeed);
+    }
+  };
+
+  // Function to move the player
+  const movePlayer = (delta) => {
+    setPlayerPosition((prevPosition) => {
+      let newPosition = prevPosition + delta;
+      // Ensure player stays within the track boundaries
+      newPosition = Math.max(0, Math.min(newPosition, trackWidth));
+      return newPosition;
+    });
+  };
+
+  // Function to move the opponents
+  const moveOpponents = () => {
+    setOpponentPositions((prevPositions) => {
+      const newPositions = prevPositions.map((position) => position + opponentSpeed);
+      return newPositions;
+    });
+  };
 
   useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.code === 'ArrowLeft') {
-        // Steer left
-        setPlayerPosition((prevPosition) => prevPosition - 10);
-      } else if (event.code === 'ArrowRight') {
-        // Steer right
-        setPlayerPosition((prevPosition) => prevPosition + 10);
-      } else if (event.code === 'ArrowUp') {
-        // Start accelerating
-        setIsAccelerating(true);
-      } else if (event.code === 'ArrowDown') {
-        // Start braking
-        setIsBraking(true);
-      }
-    };
-
-    const handleKeyUp = (event) => {
-      if (event.code === 'ArrowUp') {
-        // Stop accelerating
-        setIsAccelerating(false);
-      } else if (event.code === 'ArrowDown') {
-        // Stop braking
-        setIsBraking(false);
-      }
-    };
-
+    // Event listener for keyboard events
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+
+    // Game loop to move opponents
+    const gameLoop = setInterval(() => {
+      if (!gameOver) {
+        moveOpponents();
+      }
+    }, 100);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      clearInterval(gameLoop);
     };
-  }, []);
+  }, [gameOver]);
 
+  // Check collision between player and opponents
   useEffect(() => {
-    const accelerationRate = 0.5; // Adjust the acceleration rate as needed
-    const brakeRate = 1.5; // Adjust the brake rate as needed
+    const checkCollision = () => {
+      const playerRect = document.getElementById('player').getBoundingClientRect();
+      const opponentRects = Array.from(document.getElementsByClassName('opponent'));
 
-    const updatePlayerMovement = setInterval(() => {
-      // Update player's speed
-      if (isAccelerating && playerSpeed < 10) {
-        setPlayerSpeed((prevSpeed) => prevSpeed + accelerationRate);
-      } else if (isBraking && playerSpeed > 0) {
-        setPlayerSpeed((prevSpeed) => prevSpeed - brakeRate);
-      }
-
-      // Update player's position based on speed
-      setPlayerPosition((prevPosition) => prevPosition + playerSpeed);
-
-      // Limit player's position within the track boundaries
-      // Add appropriate logic to prevent the player from going off the track
-
-      // ...
-
-    }, 16); // Adjust the interval as needed (60 FPS is approximately 16ms)
-
-    return () => {
-      clearInterval(updatePlayerMovement);
+      opponentRects.forEach((opponentRect) => {
+        const collision = intersectRect(playerRect, opponentRect.getBoundingClientRect());
+        if (collision) {
+          setGameOver(true);
+          console.log('Collision detected!');
+        }
+      });
     };
-  }, [isAccelerating, isBraking, playerSpeed]);
+
+    // Intersection detection between two rectangles
+    const intersectRect = (rect1, rect2) => {
+      return (
+        rect1.left < rect2.right &&
+        rect1.right > rect2.left &&
+        rect1.top < rect2.bottom &&
+        rect1.bottom > rect2.top
+      );
+    };
+
+    checkCollision();
+  }, [playerPosition]);
 
   return (
     <div>
       <h1>Racing Game</h1>
-      <div className="racing-track">
-        {/* Render the player element */}
-        <div className="player" style={{ left: `${playerPosition}px` }} />
+      <RacingTrack/>
+      <div className="track">
+        <div
+          id="player"
+          className="player"
+          style={{ left: `${playerPosition}px` }}
+        />
+        {opponentPositions.map((position, index) => (
+          <div
+            key={index}
+            className="opponent"
+            style={{ left: `${position}px` }}
+          />
+        ))}
       </div>
-      {/* Other game components and UI elements */}
     </div>
   );
 };
